@@ -9,16 +9,17 @@ import { Link } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import AddCircleIcon from '@mui/icons-material/AddCircle'
+import fetchAuth from '../../lib/fetchAuth'
 
 import { feedbackWait, feedbackConfirm, feedbackNotify } from '../../ui/Feedback'
 
 export default function CarsList() {
 
   const columns = [
-    { 
-      field: 'id', 
-      headerName: 'Cód.', 
-      width: 90 
+    {
+      field: 'id',
+      headerName: 'Cód.',
+      width: 90
     },
     {
       field: 'brand',
@@ -58,23 +59,23 @@ export default function CarsList() {
       field: 'selling_price',
       headerName: 'Preço de venda',
       width: 150,
-      renderCell: params => params.value ? 
-        params.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }):'',
+      renderCell: params => params.value ?
+        params.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '',
     },
-    
+
     {
       field: 'selling_date',
       headerName: 'Data de venda',
       width: 150,
       valueFormatter: value => {
-        if(value) {
+        if (value) {
           const date = new Date(value)
           return date.toLocaleDateString('pt-BR')
         }
         else return ''
       }
     },
-    
+
     {
       field: '_actions',
       headerName: 'Ações',
@@ -89,14 +90,14 @@ export default function CarsList() {
               <EditIcon />
             </IconButton>
           </Link>
-          
-          <IconButton aria-label="excluir" 
+
+          <IconButton aria-label="excluir"
             onClick={() => handleDeleteButtonClick(params.id)}>
             <DeleteForeverIcon color="error" />
           </IconButton>
         </>
       }
-    } 
+    }
   ];
 
   const [state, setState] = React.useState({
@@ -111,13 +112,12 @@ export default function CarsList() {
   async function loadData() {
     feedbackWait(true)
     try {
-      const response = await fetch(import.meta.env.VITE_API_BASE + '/cars')
-      const data = await response.json()
+      const data = await fetchAuth.get('/cars')
 
       // Atualiza a variável de estado com os dados obtidos
       setState({ ...state, cars: data })
     }
-    catch(error) {
+    catch (error) {
       console.error(error)
       feedbackNotify(error.message, 'error')
     }
@@ -132,18 +132,17 @@ export default function CarsList() {
   }, [])
 
   async function handleDeleteButtonClick(id) {
-    if(await feedbackConfirm('Deseja realmente excluir este item?')) {
+    if (await feedbackConfirm('Deseja realmente excluir este item?')) {
       feedbackWait(true)
       try {
         // Envia a requisição para a exclusão do registro
-        await fetch(import.meta.env.VITE_API_BASE + `/cars/${id}`,
-          { method: 'DELETE' }
-        )
+        await fetchAuth.delete(`/cars/${id}`)
+
         // Atualiza os dados do datagrid
         loadData()
         feedbackNotify('Exclusão efetuada com sucesso.')
       }
-      catch(error) {
+      catch (error) {
         console.error(error)
         feedbackNotify('ERRO: ' + error.message, 'error')
       }
@@ -168,7 +167,7 @@ export default function CarsList() {
           variant="contained"
           size="large"
           color="secondary"
-          startIcon={ <AddCircleIcon /> }
+          startIcon={<AddCircleIcon />}
         >
           Novo Veículo
         </Button>

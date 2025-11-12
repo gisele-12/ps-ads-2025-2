@@ -204,5 +204,20 @@ controller.login = async function (req, res) {
     res.status(500).end()
   }
 }
+controller.me = function(req, res) {
+ /*
+   Retorna o usuário autenticado (caso haja) que foi armazenado na
+   variável req.authUser pelo middleware de autorização logo após
+   o token ter sido decodificado
+ */
+ return res.send(req?.authUser)
+}
+
+controller.logout = function(req, res) {
+ // Apaga no front-end o cookie que armazena o token de autorização
+ res.clearCookie(process.env.AUTH_COOKIE_NAME)
+ // HTTP 204: No Content
+ res.status(204).end()
+}
 
 export default controller
