@@ -11,9 +11,10 @@ import { parseISO } from 'date-fns'
 import { feedbackWait, feedbackNotify, feedbackConfirm } from '../../ui/Feedback'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMask } from '@react-input/mask'
-import { Checkbox, FormControlLabel } from '@mui/material'
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
-import fetchAuth from '../../utils/fetchAuth'
+import fetchAuth from '../../lib/fetchAuth'
 
 export default function CarsForm() {
 
@@ -43,7 +44,7 @@ export default function CarsForm() {
 
   const platesRef = useMask({
     mask: "aaa-9$99",
-    replacement: {
+    replacement: { 
       'a': /[A-Z]/,      // apenas letras maiúsculas
       '9': /[0-9]/,      // dígitos
       '$': /[A-J0-9]/    // letra de A a J ou dígito
@@ -59,7 +60,7 @@ export default function CarsForm() {
     model: '',
     color: '',
     year_manufacture: '',
-    imported: 'false',
+    imported: false,
     plates: '',
     selling_price: '',
     selling_date: null
@@ -83,7 +84,7 @@ export default function CarsForm() {
   React.useEffect(() => {
     // Sabemos que estamos editando (e não cadastrando um novo) cliente
     // quando a rota ativa contiver um parâmetro chamado id
-    if (params.id) loadData()
+    if(params.id) loadData()
   }, [])
 
   async function loadData() {
@@ -93,12 +94,12 @@ export default function CarsForm() {
 
       // Converte o formato de data armazenado no banco de dados
       // para o formato reconhecido pelo componente DatePicker
-      if (result.selling_date) result.selling_date = parseISO(result.selling_date)
+      if(result.selling_date) result.selling_date = parseISO(result.selling_date)
 
       // Armazena os dados obtidos na variável de estado
       setState({ ...state, car: result })
     }
-    catch (error) {
+    catch(error) {
       console.error(error)
       feedbackNotify('ERRO: ' + error.message)
     }
@@ -125,16 +126,15 @@ export default function CarsForm() {
     event.preventDefault()    // Impede o recarregamento da página
     feedbackWait(true)
     try {
-      
-      // Se houver parâmetro na rota, significa que estamos alterando
+            // Se houver parâmetro na rota, significa que estamos alterando
       // um registro existente. Portanto, fetch() precisa ser chamado
       // com o verbo PUT
-      if (params.id) {
+      if(params.id) {
         await fetchAuth.put(`/cars/${params.id}`, car)
       }
       // Senão, envia com o método POST para criar um novo registro
       else {
-       await fetchAuth.post('/cars', car)
+        await fetchAuth.post('/cars', car)
       }
 
       feedbackNotify('Item salvo com sucesso.', 'success', 2500, () => {
@@ -142,7 +142,7 @@ export default function CarsForm() {
         navigate('..', { relative: 'path', replace: true })
       })
     }
-    catch (error) {
+    catch(error) {
       console.error(error)
       feedbackNotify('ERRO: ' + error.message, 'error')
     }
@@ -152,7 +152,7 @@ export default function CarsForm() {
   }
 
   async function handleBackButtonClick() {
-    if (
+    if(
       formModified &&
       ! await feedbackConfirm('Há informações não salvas. Deseja realmente sair?')
     ) return    // Sai da função sem fazer nada
@@ -170,7 +170,7 @@ export default function CarsForm() {
       <form onSubmit={handleFormSubmit}>
 
         {/* autoFocus ~> foco do teclado no primeiro campo */}
-        <TextField
+        <TextField 
           variant="outlined"
           name="brand"
           label="Marca"
@@ -218,9 +218,9 @@ export default function CarsForm() {
         />
 
         <TextField
-          variant="outlined"
+          variant="outlined" 
           name="color"
-          label="Cor"
+          label="Cor" 
           fullWidth
           required
           value={car.color}
@@ -228,14 +228,14 @@ export default function CarsForm() {
           onChange={handleFieldChange}
         >
           {
-            carsColor.map(c =>
+            carsColor.map(c => 
               <MenuItem key={c.value} value={c.value}>
                 {c.label}
               </MenuItem>
             )
           }
         </TextField>
-
+        
         <TextField
           variant="outlined"
           name="selling_price"
@@ -261,17 +261,17 @@ export default function CarsForm() {
           value={car.year_manufacture}
           select
           onChange={handleFieldChange}
-        >
-          {
-            years.map(y =>
+          >
+            {
+            years.map(y => 
               <MenuItem key={y.value} value={y.value}>
                 {y.label}
               </MenuItem>
             )
           }
-
+            
         </TextField>
-
+        
         {/* 
           O evento onChange do componente DatePicker não passa o parâmetro
           "event", como o TextField, e sim a própria data que foi modificada.
@@ -280,7 +280,7 @@ export default function CarsForm() {
           necessárias.
         */}
         <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
-          <DatePicker
+          <DatePicker 
             label="Data de Venda"
             value={car.selling_date}
             slotProps={{
@@ -289,7 +289,7 @@ export default function CarsForm() {
                 fullWidth: true
               }
             }}
-            onChange={date => {
+            onChange={ date => {
               const event = { target: { name: 'selling_date', value: date } }
               handleFieldChange(event)
             }}
@@ -322,7 +322,7 @@ export default function CarsForm() {
           flexDirection: 'column',
           width: '100vw'
         }}>
-          {JSON.stringify(car, null, ' ')}
+          { JSON.stringify(car, null, ' ') }
         </Box>
 
       </form>
