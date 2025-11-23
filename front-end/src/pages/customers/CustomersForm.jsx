@@ -11,6 +11,8 @@ import { parseISO } from 'date-fns'
 import { feedbackWait, feedbackNotify, feedbackConfirm } from '../../ui/Feedback'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMask } from '@react-input/mask'
+import Customer from '../../models/Customer.js'
+import { ZodError } from 'zod'
 
 import fetchAuth from '../../lib/fetchAuth'
 
@@ -29,7 +31,7 @@ export default function CustomersForm() {
 
   const identDocumentRef = useMask({
     mask: "###.###.###-##",
-    replacement: { 
+    replacement: {
       '#': /[0-9]/,   // Somente dígitos
     },
     showMask: false
@@ -37,7 +39,7 @@ export default function CustomersForm() {
 
   const phoneRef = useMask({
     mask: "(##) %####-####",
-    replacement: { 
+    replacement: {
       '#': /[0-9]/,   // Somente dígitos
       '%': /[0-9\s]/  // Dígitos ou espaço em branco (\s)
     },
@@ -67,19 +69,22 @@ export default function CustomersForm() {
   // Variáveis de estado
   const [state, setState] = React.useState({
     customer: { ...formDefaults },
-    formModified: false
+    formModified: false,
+    inputErrors: {}
   })
   const {
     customer,
-    formModified
+    formModified,
+    inputErrors
   } = state
+
 
   // Se estivermos editando um cliente, precisamos buscar os seus dados
   // no servidor assim que o componente for carregado
   React.useEffect(() => {
     // Sabemos que estamos editando (e não cadastrando um novo) cliente
     // quando a rota ativa contiver um parâmetro chamado id
-    if(params.id) loadData()
+    if (params.id) loadData()
   }, [])
 
   async function loadData() {
@@ -89,12 +94,12 @@ export default function CustomersForm() {
 
       // Converte o formato de data armazenado no banco de dados
       // para o formato reconhecido pelo componente DatePicker
-      if(result.birth_date) result.birth_date = parseISO(result.birth_date)
+      if (result.birth_date) result.birth_date = parseISO(result.birth_date)
 
       // Armazena os dados obtidos na variável de estado
       setState({ ...state, customer: result })
     }
-    catch(error) {
+    catch (error) {
       console.error(error)
       feedbackNotify('ERRO: ' + error.message)
     }
@@ -125,10 +130,13 @@ export default function CustomersForm() {
     event.preventDefault()    // Impede o recarregamento da página
     feedbackWait(true)
     try {
+      // Invoca a validação do Zod
+      Customer.parse(customer)
+
       // Se houver parâmetro na rota, significa que estamos alterando
       // um registro existente. Portanto, fetch() precisa ser chamado
       // com o verbo PUT
-      if(params.id) {
+      if (params.id) {
         await fetchAuth.put(`/customers/${params.id}`, customer)
       }
       // Senão, envia com o método POST para criar um novo registro
@@ -141,9 +149,20 @@ export default function CustomersForm() {
         navigate('..', { relative: 'path', replace: true })
       })
     }
-    catch(error) {
+    catch (error) {
       console.error(error)
-      feedbackNotify('ERRO: ' + error.message, 'error')
+
+      // Em caso de erro do Zod, preenchemos a variável de estado
+      // inputErrors com os erros para depois exibir abaixo de cada
+      // campo de entrada
+      if (error instanceof ZodError) {
+        const errorMessages = {}
+        for (let i of error.issues) errorMessages[i.path[0]] = i.message
+        setState({ ...state, inputErrors: errorMessages })
+        notify('Há campos com valores inválidos. Verifique.', 'error')
+      }
+      else notify(error.message, 'error')
+
     }
     finally {
       feedbackWait(false)
@@ -151,7 +170,7 @@ export default function CustomersForm() {
   }
 
   async function handleBackButtonClick() {
-    if(
+    if (
       formModified &&
       ! await feedbackConfirm('Há informações não salvas. Deseja realmente sair?')
     ) return    // Sai da função sem fazer nada
@@ -169,7 +188,7 @@ export default function CustomersForm() {
       <form onSubmit={handleFormSubmit}>
 
         {/* autoFocus ~> foco do teclado no primeiro campo */}
-        <TextField 
+        <TextField
           variant="outlined"
           name="name"
           label="Nome completo"
@@ -178,6 +197,8 @@ export default function CustomersForm() {
           autoFocus
           value={customer.name}
           onChange={handleFieldChange}
+          error={inputErrors?.name}
+          helperText={inputErrors?.name}
         />
 
         <TextField
@@ -189,6 +210,8 @@ export default function CustomersForm() {
           required
           value={customer.ident_document}
           onChange={handleFieldChange}
+          error={inputErrors?.ident_document}
+          helperText={inputErrors?.ident_document}
         />
 
         {/* 
@@ -199,23 +222,25 @@ export default function CustomersForm() {
           necessárias.
         */}
         <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
-          <DatePicker 
+          <DatePicker
             label="Data de nascimento"
             value={customer.birth_date}
             slotProps={{
               textField: {
                 variant: "outlined",
-                fullWidth: true
+                fullWidth: true,
+                error: inputErrors?.birth_date,
+                helperText: inputErrors?.birth_date
               }
             }}
-            onChange={ date => {
+            onChange={date => {
               const event = { target: { name: 'birth_date', value: date } }
               handleFieldChange(event)
             }}
           />
         </LocalizationProvider>
 
-        <TextField 
+        <TextField
           variant="outlined"
           name="street_name"
           label="Logradouro"
@@ -224,9 +249,11 @@ export default function CustomersForm() {
           required
           value={customer.street_name}
           onChange={handleFieldChange}
+          error={inputErrors?.street_name}
+          helperText={inputErrors?.street_name}
         />
 
-        <TextField 
+        <TextField
           variant="outlined"
           name="house_number"
           label="nº"
@@ -234,6 +261,8 @@ export default function CustomersForm() {
           required
           value={customer.house_number}
           onChange={handleFieldChange}
+          error={inputErrors?.house_number}
+          helperText={inputErrors?.house_number}
         />
 
         <TextField
@@ -244,9 +273,11 @@ export default function CustomersForm() {
           fullWidth
           value={customer.complements}
           onChange={handleFieldChange}
+          error={inputErrors?.complements}
+          helperText={inputErrors?.complements}
         />
 
-        <TextField 
+        <TextField
           variant="outlined"
           name="district"
           label="Bairro"
@@ -254,9 +285,11 @@ export default function CustomersForm() {
           required
           value={customer.district}
           onChange={handleFieldChange}
+          error={inputErrors?.district}
+          helperText={inputErrors?.district}
         />
 
-        <TextField 
+        <TextField
           variant="outlined"
           name="municipality"
           label="Município"
@@ -264,20 +297,24 @@ export default function CustomersForm() {
           required
           value={customer.municipality}
           onChange={handleFieldChange}
+          error={inputErrors?.municipality}
+          helperText={inputErrors?.municipality}
         />
 
         <TextField
-          variant="outlined" 
+          variant="outlined"
           name="state"
-          label="UF" 
+          label="UF"
           fullWidth
           required
           value={customer.state}
           select
           onChange={handleFieldChange}
+          error={inputErrors?.state}
+          helperText={inputErrors?.state}
         >
           {
-            brazilianStates.map(s => 
+            brazilianStates.map(s =>
               <MenuItem key={s.value} value={s.value}>
                 {s.label}
               </MenuItem>
@@ -294,9 +331,11 @@ export default function CustomersForm() {
           required
           value={customer.phone}
           onChange={handleFieldChange}
+          error={inputErrors?.phone}
+          helperText={inputErrors?.phone}
         />
 
-        <TextField 
+        <TextField
           variant="outlined"
           name="email"
           label="E-mail"
@@ -304,6 +343,8 @@ export default function CustomersForm() {
           required
           value={customer.email}
           onChange={handleFieldChange}
+          error={inputErrors?.email}
+          helperText={inputErrors?.email}
         />
 
         <Box sx={{
@@ -332,7 +373,7 @@ export default function CustomersForm() {
           flexDirection: 'column',
           width: '100vw'
         }}>
-          { JSON.stringify(customer, null, ' ') }
+          {JSON.stringify(customer, null, ' ')}
         </Box>
 
       </form>
