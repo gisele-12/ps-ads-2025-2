@@ -11,28 +11,31 @@ import { parseISO } from 'date-fns'
 import { feedbackWait, feedbackNotify, feedbackConfirm } from '../../ui/Feedback'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMask } from '@react-input/mask'
-import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Car from '../../models/Car.js'
+import { ZodError } from 'zod'
 
 import fetchAuth from '../../lib/fetchAuth'
 
 export default function CarsForm() {
 
   const carsColor = [
-    { value: "Amarelo", label: "Amarelo" },
-    { value: "Azul", label: "Azul" },
-    { value: "Branco", label: "Branco" },
-    { value: "Carmim", label: "Carmim" },
-    { value: "Ciano", label: "Ciano" },
-    { value: "Cinza", label: "Cinza" },
-    { value: "Dourado", label: "Dourado" },
-    { value: "Marrom", label: "Marrom" },
-    { value: "Prata", label: "Prata" },
-    { value: "Preto", label: "Preto" },
-    { value: "Roxo", label: "Roxo" },
-    { value: "Verde", label: "Verde" },
-    { value: "Vermelho", label: "Vermelho" },
-    { value: "Vinho", label: "Vinho" }
+    { value: 'AMARELO', label: 'AMARELO' },
+    { value: 'AZUL', label: 'AZUL' },
+    { value: 'BRANCO', label: 'BRANCO' },
+    { value: 'CINZA', label: 'CINZA' },
+    { value: 'DOURADO', label: 'DOURADO' },
+    { value: 'LARANJA', label: 'LARANJA' },
+    { value: 'MARROM', label: 'MARROM' },
+    { value: 'PRATA', label: 'PRATA' },
+    { value: 'PRETO', label: 'PRETO' },
+    { value: 'ROSA', label: 'ROSA' },
+    { value: 'ROXO', label: 'ROXO' },
+    { value: 'VERDE', label: 'VERDE' },
+    { value: 'VERMELHO', label: 'VERMELHO' },
+
+
   ]
 
   const currentYear = new Date().getFullYear();
@@ -44,7 +47,7 @@ export default function CarsForm() {
 
   const platesRef = useMask({
     mask: "aaa-9$99",
-    replacement: { 
+    replacement: {
       'a': /[A-Z]/,      // apenas letras maiúsculas
       '9': /[0-9]/,      // dígitos
       '$': /[A-J0-9]/    // letra de A a J ou dígito
@@ -72,11 +75,13 @@ export default function CarsForm() {
   // Variáveis de estado
   const [state, setState] = React.useState({
     car: { ...formDefaults },
-    formModified: false
+    formModified: false,
+    inputErrors: {}
   })
   const {
     car,
-    formModified
+    formModified,
+    inputErrors
   } = state
 
   // Se estivermos editando um cliente, precisamos buscar os seus dados
@@ -84,7 +89,7 @@ export default function CarsForm() {
   React.useEffect(() => {
     // Sabemos que estamos editando (e não cadastrando um novo) cliente
     // quando a rota ativa contiver um parâmetro chamado id
-    if(params.id) loadData()
+    if (params.id) loadData()
   }, [])
 
   async function loadData() {
@@ -94,12 +99,12 @@ export default function CarsForm() {
 
       // Converte o formato de data armazenado no banco de dados
       // para o formato reconhecido pelo componente DatePicker
-      if(result.selling_date) result.selling_date = parseISO(result.selling_date)
+      if (result.selling_date) result.selling_date = parseISO(result.selling_date)
 
       // Armazena os dados obtidos na variável de estado
       setState({ ...state, car: result })
     }
-    catch(error) {
+    catch (error) {
       console.error(error)
       feedbackNotify('ERRO: ' + error.message)
     }
@@ -126,10 +131,13 @@ export default function CarsForm() {
     event.preventDefault()    // Impede o recarregamento da página
     feedbackWait(true)
     try {
-            // Se houver parâmetro na rota, significa que estamos alterando
+      // Invoca a validação do Zod
+      Car.parse(car)
+
+      // Se houver parâmetro na rota, significa que estamos alterando
       // um registro existente. Portanto, fetch() precisa ser chamado
       // com o verbo PUT
-      if(params.id) {
+      if (params.id) {
         await fetchAuth.put(`/cars/${params.id}`, car)
       }
       // Senão, envia com o método POST para criar um novo registro
@@ -142,9 +150,19 @@ export default function CarsForm() {
         navigate('..', { relative: 'path', replace: true })
       })
     }
-    catch(error) {
+    catch (error) {
       console.error(error)
       feedbackNotify('ERRO: ' + error.message, 'error')
+      // Em caso de erro do Zod, preenchemos a variável de estado
+      // inputErrors com os erros para depois exibir abaixo de cada
+      // campo de entrada
+      if (error instanceof ZodError) {
+        const errorMessages = {}
+        for (let i of error.issues) errorMessages[i.path[0]] = i.message
+        setState({ ...state, inputErrors: errorMessages })
+        notify('Há campos com valores inválidos. Verifique.', 'error')
+      }
+      else notify(error.message, 'error')
     }
     finally {
       feedbackWait(false)
@@ -152,7 +170,7 @@ export default function CarsForm() {
   }
 
   async function handleBackButtonClick() {
-    if(
+    if (
       formModified &&
       ! await feedbackConfirm('Há informações não salvas. Deseja realmente sair?')
     ) return    // Sai da função sem fazer nada
@@ -170,7 +188,7 @@ export default function CarsForm() {
       <form onSubmit={handleFormSubmit}>
 
         {/* autoFocus ~> foco do teclado no primeiro campo */}
-        <TextField 
+        <TextField
           variant="outlined"
           name="brand"
           label="Marca"
@@ -179,6 +197,8 @@ export default function CarsForm() {
           autoFocus
           value={car.brand}
           onChange={handleFieldChange}
+          error={inputErrors?.brand}
+          helperText={inputErrors?.brand}
         />
 
         <div className="MuiFormControl-root">
@@ -204,6 +224,8 @@ export default function CarsForm() {
           required
           value={car.model}
           onChange={handleFieldChange}
+          error={inputErrors?.model}
+          helperText={inputErrors?.model}
         />
 
         <TextField
@@ -215,27 +237,31 @@ export default function CarsForm() {
           required
           value={car.plates}
           onChange={handleFieldChange}
+          error={inputErrors?.plates}
+          helperText={inputErrors?.plates}
         />
 
         <TextField
-          variant="outlined" 
+          variant="outlined"
           name="color"
-          label="Cor" 
+          label="Cor"
           fullWidth
           required
           value={car.color}
           select
           onChange={handleFieldChange}
+          error={inputErrors?.color}
+          helperText={inputErrors?.color}
         >
           {
-            carsColor.map(c => 
+            carsColor.map(c =>
               <MenuItem key={c.value} value={c.value}>
                 {c.label}
               </MenuItem>
             )
           }
         </TextField>
-        
+
         <TextField
           variant="outlined"
           name="selling_price"
@@ -250,6 +276,8 @@ export default function CarsForm() {
               handleFieldChange(e);
             }
           }}
+          error={inputErrors?.selling_price}
+          helperText={inputErrors?.selling_price}
         />
 
         <TextField
@@ -261,17 +289,19 @@ export default function CarsForm() {
           value={car.year_manufacture}
           select
           onChange={handleFieldChange}
-          >
-            {
-            years.map(y => 
+          error={inputErrors?.year_manufacture}
+          helperText={inputErrors?.year_manufacture}
+        >
+          {
+            years.map(y =>
               <MenuItem key={y.value} value={y.value}>
                 {y.label}
               </MenuItem>
             )
           }
-            
+
         </TextField>
-        
+
         {/* 
           O evento onChange do componente DatePicker não passa o parâmetro
           "event", como o TextField, e sim a própria data que foi modificada.
@@ -280,16 +310,18 @@ export default function CarsForm() {
           necessárias.
         */}
         <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
-          <DatePicker 
+          <DatePicker
             label="Data de Venda"
             value={car.selling_date}
             slotProps={{
               textField: {
                 variant: "outlined",
-                fullWidth: true
+                fullWidth: true,
+                error: inputErrors?.selling_date,
+                helperText: inputErrors?.selling_date
               }
             }}
-            onChange={ date => {
+            onChange={date => {
               const event = { target: { name: 'selling_date', value: date } }
               handleFieldChange(event)
             }}
@@ -322,7 +354,7 @@ export default function CarsForm() {
           flexDirection: 'column',
           width: '100vw'
         }}>
-          { JSON.stringify(car, null, ' ') }
+          {JSON.stringify(car, null, ' ')}
         </Box>
 
       </form>
