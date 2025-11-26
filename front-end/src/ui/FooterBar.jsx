@@ -26,7 +26,7 @@ export default function FooterBar() {
         }}
       >
         Desenvolvido e mantido com <LocalCafeIcon fontSize="small" /> por <a 
-        href="mailto:gisele.roncoleta@fatec.sp.gov.br">Gisele <Roncoleta></Roncoleta></a>
+        href="mailto:emaildigisele@gmail.com">Gisele Roncoleta</a>
       </Typography>
     </Box>
   );
